@@ -804,20 +804,6 @@ elif st.session_state.current_page == 'detection':
             """, unsafe_allow_html=True)
     
     # Mode Webcam
-    from streamlit_webrtc import webrtc_streamer, WebRtcMode
-    import av
-    class VideoProcessor:
-        def recv(self, frame):
-            img = frame.to_ndarray(format="bgr24")
-            # Conversion pour votre fonction (qui attend du RGB)
-            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            
-            # On utilise votre fonction existante
-            processed_img, num_faces, num_eyes, _, _ = process_image(img_rgb)
-            
-            # Conversion retour pour l'affichage (WebRTC attend du BGR)
-            result_bgr = cv2.cvtColor(processed_img, cv2.COLOR_RGB2BGR)
-            return av.VideoFrame.from_ndarray(result_bgr, format="bgr24")
     elif st.session_state.mode == 'webcam' and st.session_state.webcam_running:
         st.info("🔴 Flux en direct activé")
         
@@ -830,16 +816,7 @@ elif st.session_state.current_page == 'detection':
         image_placeholder = st.empty()
         status_placeholder = st.empty()
 
-        cap = webrtc_streamer(
-            key="detection-genius-webcam",
-            mode=WebRtcMode.SENDRECV,
-            video_processor_factory=VideoProcessor,
-            rtc_configuration={
-                "iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]
-            },
-            media_stream_constraints={"video": True, "audio": False},
-            async_processing=True,
-        )
+        cap = cv2.VideoCapture(0)
 
         if not cap.isOpened():
             st.error("Impossible d'accéder à la webcam.")

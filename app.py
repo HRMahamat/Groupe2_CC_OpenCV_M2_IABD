@@ -805,12 +805,16 @@ elif st.session_state.current_page == 'detection':
     
     # Mode Webcam
     elif st.session_state.mode == 'webcam' and st.session_state.webcam_running:
-
-        # 1. Message statique SANS animation pour éviter les conflits DOM
         st.info("🔴 Flux en direct activé")
-
-        # 2. On crée UN SEUL conteneur pour tout ce qui bouge
-        streaming_placeholder = st.empty()
+        
+        # 1. ON PRÉPARE LA STRUCTURE AVANT LA BOUCLE (Une seule fois)
+        col_m1, col_m2, col_m3 = st.columns(3)
+        metric_faces = col_m1.empty()
+        metric_eyes = col_m2.empty()
+        metric_fps = col_m3.empty()
+        
+        image_placeholder = st.empty()
+        status_placeholder = st.empty()
 
         cap = cv2.VideoCapture(0)
 
@@ -827,33 +831,29 @@ elif st.session_state.current_page == 'detection':
                     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     processed_frame, num_faces, num_eyes, proc_time, quality = process_image(frame_rgb)
 
-                    # Mise à jour du compteur global (plus rare pour économiser les ressources)
+                    # Mise à jour du compteur global (optionnel)
                     if time.time() % 1 < 0.1:
                         st.session_state.total_detections += num_faces
 
-                    # 3. Rendu simplifié : on ne reconstruit pas tout le HTML complexe à chaque fois
-                    with streaming_placeholder.container():
-                        # Affichage des métriques simples (st.metrics est plus stable que le HTML personnalisé en boucle)
-                        m1, m2, m3 = st.columns(3)
-                        m1.metric("Visages", num_faces)
-                        m2.metric("Yeux", num_eyes)
-                        m3.metric("FPS", f"{1 / proc_time:.1f}")
+                    # 2. MISE À JOUR DES ÉLÉMENTS EXISTANTS (Sans recréer de colonnes)
+                    metric_faces.metric("Visages", num_faces)
+                    metric_eyes.metric("Yeux", num_eyes)
+                    
+                    fps = 1 / proc_time if proc_time > 0 else 0
+                    metric_fps.metric("FPS", f"{fps:.1f}")
 
-                        # Image principale
-                        st.image(processed_frame, use_container_width=True)
+                    image_placeholder.image(processed_frame, use_container_width=True)
+                    status_placeholder.write(f"Qualité: {quality} | Traitement: {proc_time:.3f}s")
 
-                        # Petite barre de statut simple
-                        st.write(f"Qualité: {quality} | Traitement: {proc_time:.3f}s")
-
-                    # Un délai de 0.05 est nécessaire pour laisser le navigateur souffler
-                    time.sleep(0.05)
+                    time.sleep(0.01) # Un délai très court pour laisser React respirer
 
             except Exception as e:
-                # Si l'utilisateur change de page, on attrape l'erreur silencieusement
-                pass
+                st.error(f"Erreur flux: {e}")
             finally:
                 cap.release()
-                streaming_placeholder.empty()
+                # On nettoie après l'arrêt
+                image_placeholder.empty()
+                status_placeholder.empty()
             st.markdown("""
             <div class="feedback-box feedback-success">
                 <span class="feedback-icon">🟢</span>
@@ -879,4 +879,5 @@ st.markdown(f"""
         Propulsé par OpenCV • Streamlit • Python | {st.session_state.total_detections} détections réalisées
     </p>
 </div>
+
 """, unsafe_allow_html=True)

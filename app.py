@@ -816,8 +816,9 @@ elif st.session_state.current_page == 'detection':
         image_placeholder = st.empty()
         status_placeholder = st.empty()
 
-        # ---------- Remplacement webcam robuste (st.camera_input) ----------
+        # ---------- Remplacement webcam : traitement automatique de st.camera_input ----------
         import time
+        from io import BytesIO
         
         # placeholders metrics (déjà créés plus haut, mais redéclarés localement pour sûreté)
         col_m1, col_m2, col_m3 = st.columns(3)
@@ -827,60 +828,53 @@ elif st.session_state.current_page == 'detection':
         status_placeholder = st.empty()
         image_placeholder = st.empty()
         
-        # Message d'info
-        st.info("🔴 Mode Webcam (capture photo): autorise la caméra dans le navigateur puis clique sur 'Prendre une photo' ou 'Capture en continu'.")
+        st.info("🔴 Mode Webcam (capture photo) — autorise la caméra dans le navigateur puis clique sur le bouton de la caméra pour prendre une photo. L'image sera traitée automatiquement.")
         
-        # Capture unique via st.camera_input (compatible Streamlit Cloud)
+        # Composant caméra (renvoie un fichier BytesIO quand l'utilisateur prend une photo)
         cam_file = st.camera_input("📷 Prendre une photo (webcam)", key="camera_input")
         
-        # Boutons supplémentaires : capture manuelle et option 'Auto' (boucle limitée)
-        col_btn1, col_btn2 = st.columns([1,1])
-        with col_btn1:
-            capture_btn = st.button("📸 Traiter la photo maintenant", key="manual_capture")
-        with col_btn2:
-            auto_mode = st.checkbox("🔁 Capture en continu (5 captures max)", key="auto_capture")
-        
-        # Si l'utilisateur a pris une photo (ou appuie sur le bouton), on traite l'image
-        def handle_frame_from_file(file_like):
+        # Si l'utilisateur capture une photo, on la traite immédiatement (pas besoin d'appuyer sur un bouton supplémentaire)
+        if cam_file is not None:
             try:
-                img = Image.open(file_like).convert("RGB")
+                # Lecture de l'image depuis le BytesIO renvoyé par st.camera_input
+                img = Image.open(cam_file).convert("RGB")
                 img_array = np.array(img)
+        
+                # Appel de TA fonction existante (process_image attend un array RGB)
                 processed, nf, ne, pt, quality = process_image(img_array)
         
-                # Mettre à jour métriques et UI
+                # Mise à jour UI / métriques
                 metric_faces.metric("Visages", nf)
                 metric_eyes.metric("Yeux", ne)
                 metric_fps.metric("FPS", f"{(1.0/pt):.1f}" if pt>0 else "0.0")
-                image_placeholder.image(processed, caption=f"Résultat — Visages: {nf}, Yeux: {ne}", width='stretch')
-                status_placeholder.success(f"Détection: {nf} visage(s), {ne} oeil(s) — Temps: {pt:.3f}s — Qualité: {quality}")
+                status_placeholder.success(f"Détection : {nf} visage(s), {ne} œil(s) — Temps : {pt:.3f}s — Qualité : {quality}")
+        
+                # Afficher l'image annotée (stretch pour occuper la colonne)
+                image_placeholder.image(processed, caption=f"Résultat — Visages: {nf} | Yeux: {ne}", width='stretch')
+        
+                # Incrémenter compteur total
                 st.session_state.total_detections += nf
+        
+                # Bouton optionnel pour sauvegarder la photo traitée localement (download)
+                buf = BytesIO()
+                # processed est un numpy array RGB ; convertir en PIL et sauvegarder
+                im_pil = Image.fromarray(processed)
+                im_pil.save(buf, format="PNG")
+                buf.seek(0)
+                st.download_button(
+                    label="💾 Télécharger l'image traitée",
+                    data=buf,
+                    file_name="detection_result.png",
+                    mime="image/png"
+                )
+        
             except Exception as ex:
-                st.error(f"Erreur lors du traitement : {ex}")
+                st.error(f"Erreur lors du traitement de la photo : {ex}")
         
-        # Traitement si caméra donne un fichier et/ou si on appuie sur le bouton
-        if cam_file is not None:
-            # si bouton manuel pressé -> traiter la photo prise
-            if capture_btn:
-                handle_frame_from_file(cam_file)
-        
-            # Si mode auto demandé -> effectuer plusieurs captures (note: utilisateur doit prendre plusieurs photos successives)
-            if auto_mode:
-                st.info("Mode auto activé: clique sur la caméra à plusieurs reprises pour prendre jusqu'à 5 images (streaming non supporté sur Cloud).")
-                # on propose un mini-slider / compteur pour limiter
-                n = st.slider("Nombre de captures à traiter", min_value=1, max_value=5, value=3, key="auto_count")
-                if st.button("Lancer les captures", key="start_auto"):
-                    for i in range(n):
-                        # on ré-ouvre le dernier cam_file (l'utilisateur devra faire plusieurs prises manuelles)
-                        # En pratique st.camera_input ne capture pas automatiquement plusieurs images; on rappelle l'utilisateur.
-                        st.warning("Prise photo n°{}: cliquez sur le composant caméra pour prendre une nouvelle photo, puis cliquez 'Traiter la photo maintenant'.".format(i+1))
-                        st.sleep(0.5)
         else:
-            # Aucune photo prise encore
-            st.info("Aucune photo prise. Utilise le bouton 'Prendre une photo' du navigateur puis appuie sur 'Traiter la photo maintenant'.")
-        
-        # Un alternative directe : permettre d'uploader une image locale (déjà présent côté 'upload')
-        st.markdown("**Astuce** : pour tester rapidement, tu peux aussi déposer une image via la fonction 'Image' dans la barre latérale.")
-        # ---------- FIN Remplacement webcam ----------
+            st.info("Aucune photo prise. Clique sur le composant caméra pour capturer une image, elle sera traitée immédiatement.")
+        # ---------- FIN remplacement ----------
+
 
 
             st.markdown("""
@@ -910,6 +904,7 @@ st.markdown(f"""
 </div>
 
 """, unsafe_allow_html=True)
+
 
 
 

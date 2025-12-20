@@ -1,8 +1,9 @@
-streamlit>=1.18.0
+streamlit
 opencv-python-headless==4.7.0.72
 numpy
 Pillow
 streamlit-webrtc==0.54.0
 av==8.0.3
 aiortc==1.6.6
+
 

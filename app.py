@@ -816,44 +816,102 @@ elif st.session_state.current_page == 'detection':
         image_placeholder = st.empty()
         status_placeholder = st.empty()
 
-        cap = cv2.VideoCapture(0)
-
-        if not cap.isOpened():
-            st.error("Impossible d'accéder à la webcam.")
-            st.session_state.webcam_running = False
+        # ----- START: remplacement de la logique webcam par streamlit-webrtc -----
+        from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, RTCConfiguration
+        import av
+        import threading
+        
+        # Option STUN (utile en production)
+        RTC_CONFIGURATION = RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
+        
+        class OpenCVTransformer(VideoTransformerBase):
+            def __init__(self):
+                # attributs pour exposer stats au thread principal
+                self.last_faces = 0
+                self.last_eyes = 0
+                self.last_proc_time = 0.0
+                self.lock = threading.Lock()
+        
+            def transform(self, frame: av.VideoFrame) -> av.VideoFrame:
+                # reçoit frame en BGR24
+                img_bgr = frame.to_ndarray(format="bgr24")
+                # convertir en RGB car ta fonction process_image attend RGB
+                img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+        
+                # appeler ta fonction de traitement existante (process_image)
+                processed_rgb, num_faces, num_eyes, proc_time, quality = process_image(img_rgb)
+        
+                # Mettre à jour les compteurs dans l'objet (thread-safe)
+                with self.lock:
+                    self.last_faces = num_faces
+                    self.last_eyes = num_eyes
+                    self.last_proc_time = proc_time
+        
+                # Reconversion pour renvoyer (bgr)
+                out_bgr = cv2.cvtColor(processed_rgb, cv2.COLOR_RGB2BGR)
+                return av.VideoFrame.from_ndarray(out_bgr, format="bgr24")
+        
+        
+        # Lancer le streamer (dans ton layout page detection, quand mode == 'webcam')
+        ctx = webrtc_streamer(
+            key="detection-webcam",
+            video_transformer_factory=OpenCVTransformer,
+            rtc_configuration=RTC_CONFIGURATION,
+            media_stream_constraints={"video": True, "audio": False},
+            async_transform=True,
+            video_frame_callback=None,
+            desired_playing=True,
+        )
+        
+        # Affichage des metrics en parallèle (lire les stats depuis ctx.video_transformer)
+        col_m1, col_m2, col_m3 = st.columns(3)
+        metric_faces = col_m1.empty()
+        metric_eyes = col_m2.empty()
+        metric_fps = col_m3.empty()
+        status_placeholder = st.empty()
+        
+        # Boucle non bloquante pour mettre à jour les métriques tant que le component tourne
+        if ctx.state.playing:
+            status_placeholder.info("🔴 Flux WebRTC actif — autorise la webcam dans le navigateur.")
         else:
+            status_placeholder.warning("Le flux WebRTC n'est pas actif. Clique sur 'Start' dans la fenêtre vidéo si nécessaire.")
+        
+        # On lit régulièrement les valeurs exposées par le transformer (si présent)
+        import time
+        def update_stats_loop(ctx, metric_faces, metric_eyes, metric_fps, status_placeholder):
             try:
-                while st.session_state.webcam_running:
-                    ret, frame = cap.read()
-                    if not ret:
-                        break
+                while True:
+                    if ctx.video_transformer is None:
+                        # transformer pas encore prêt
+                        metric_faces.metric("Visages", 0)
+                        metric_eyes.metric("Yeux", 0)
+                        metric_fps.metric("FPS", "0.0")
+                        status_placeholder.write("Initialisation du flux...")
+                    else:
+                        with ctx.video_transformer.lock:
+                            nf = ctx.video_transformer.last_faces
+                            ne = ctx.video_transformer.last_eyes
+                            pt = ctx.video_transformer.last_proc_time or 0.0
+                        fps = 1.0 / pt if pt > 0 else 0.0
+                        metric_faces.metric("Visages", nf)
+                        metric_eyes.metric("Yeux", ne)
+                        metric_fps.metric("FPS", f"{fps:.1f}")
+                        status_placeholder.write(f"Qualité: — | Traitement (s): {pt:.3f}")
+                    time.sleep(0.5)
+            except Exception:
+                pass
+        
+        # Démarrer la boucle de mise à jour dans un thread d'arrière-plan (non bloquant pour Streamlit)
+        if 'webrtc_stats_thread' not in st.session_state:
+            st.session_state.webrtc_stats_thread = threading.Thread(
+                target=update_stats_loop,
+                args=(ctx, metric_faces, metric_eyes, metric_fps, status_placeholder),
+                daemon=True
+            )
+            st.session_state.webrtc_stats_thread.start()
+        
+        # ----- END: remplacement webcam -----
 
-                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    processed_frame, num_faces, num_eyes, proc_time, quality = process_image(frame_rgb)
-
-                    # Mise à jour du compteur global (optionnel)
-                    if time.time() % 1 < 0.1:
-                        st.session_state.total_detections += num_faces
-
-                    # 2. MISE À JOUR DES ÉLÉMENTS EXISTANTS (Sans recréer de colonnes)
-                    metric_faces.metric("Visages", num_faces)
-                    metric_eyes.metric("Yeux", num_eyes)
-                    
-                    fps = 1 / proc_time if proc_time > 0 else 0
-                    metric_fps.metric("FPS", f"{fps:.1f}")
-
-                    image_placeholder.image(processed_frame, use_container_width=True)
-                    status_placeholder.write(f"Qualité: {quality} | Traitement: {proc_time:.3f}s")
-
-                    time.sleep(0.01) # Un délai très court pour laisser React respirer
-
-            except Exception as e:
-                st.error(f"Erreur flux: {e}")
-            finally:
-                cap.release()
-                # On nettoie après l'arrêt
-                image_placeholder.empty()
-                status_placeholder.empty()
             st.markdown("""
             <div class="feedback-box feedback-success">
                 <span class="feedback-icon">🟢</span>
@@ -881,4 +939,5 @@ st.markdown(f"""
 </div>
 
 """, unsafe_allow_html=True)
+
 

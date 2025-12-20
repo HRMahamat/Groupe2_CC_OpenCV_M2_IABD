@@ -816,11 +816,10 @@ elif st.session_state.current_page == 'detection':
         image_placeholder = st.empty()
         status_placeholder = st.empty()
 
-        # ---------- DÉBUT Remplacement Webcam (webrtc + fallback camera_input) ----------
+        # ---------- Remplacement webcam robuste (st.camera_input) ----------
         import time
-        import threading
         
-        # Préparer placeholders metrics (déjà créés plus haut dans ton code)
+        # placeholders metrics (déjà créés plus haut, mais redéclarés localement pour sûreté)
         col_m1, col_m2, col_m3 = st.columns(3)
         metric_faces = col_m1.empty()
         metric_eyes  = col_m2.empty()
@@ -828,112 +827,61 @@ elif st.session_state.current_page == 'detection':
         status_placeholder = st.empty()
         image_placeholder = st.empty()
         
-        webrtc_available = False
-        webrtc_error_msg = None
-        ctx = None
+        # Message d'info
+        st.info("🔴 Mode Webcam (capture photo): autorise la caméra dans le navigateur puis clique sur 'Prendre une photo' ou 'Capture en continu'.")
         
-        try:
-            # Importer webrtc (peut lever si packages manquants)
-            from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
-            import av
+        # Capture unique via st.camera_input (compatible Streamlit Cloud)
+        cam_file = st.camera_input("📷 Prendre une photo (webcam)", key="camera_input")
         
-            # Définit un transformer qui appelle ta fonction process_image
-            class OpenCVTransformer(VideoTransformerBase):
-                def __init__(self):
-                    self.last_faces = 0
-                    self.last_eyes = 0
-                    self.last_proc_time = 0.0
-                    self.lock = threading.Lock()
+        # Boutons supplémentaires : capture manuelle et option 'Auto' (boucle limitée)
+        col_btn1, col_btn2 = st.columns([1,1])
+        with col_btn1:
+            capture_btn = st.button("📸 Traiter la photo maintenant", key="manual_capture")
+        with col_btn2:
+            auto_mode = st.checkbox("🔁 Capture en continu (5 captures max)", key="auto_capture")
         
-                def transform(self, frame: av.VideoFrame) -> av.VideoFrame:
-                    img_bgr = frame.to_ndarray(format="bgr24")
-                    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+        # Si l'utilisateur a pris une photo (ou appuie sur le bouton), on traite l'image
+        def handle_frame_from_file(file_like):
+            try:
+                img = Image.open(file_like).convert("RGB")
+                img_array = np.array(img)
+                processed, nf, ne, pt, quality = process_image(img_array)
         
-                    processed_rgb, nf, ne, pt, quality = process_image(img_rgb)
+                # Mettre à jour métriques et UI
+                metric_faces.metric("Visages", nf)
+                metric_eyes.metric("Yeux", ne)
+                metric_fps.metric("FPS", f"{(1.0/pt):.1f}" if pt>0 else "0.0")
+                image_placeholder.image(processed, caption=f"Résultat — Visages: {nf}, Yeux: {ne}", width='stretch')
+                status_placeholder.success(f"Détection: {nf} visage(s), {ne} oeil(s) — Temps: {pt:.3f}s — Qualité: {quality}")
+                st.session_state.total_detections += nf
+            except Exception as ex:
+                st.error(f"Erreur lors du traitement : {ex}")
         
-                    with self.lock:
-                        self.last_faces = nf
-                        self.last_eyes = ne
-                        self.last_proc_time = pt
+        # Traitement si caméra donne un fichier et/ou si on appuie sur le bouton
+        if cam_file is not None:
+            # si bouton manuel pressé -> traiter la photo prise
+            if capture_btn:
+                handle_frame_from_file(cam_file)
         
-                    out_bgr = cv2.cvtColor(processed_rgb, cv2.COLOR_RGB2BGR)
-                    return av.VideoFrame.from_ndarray(out_bgr, format="bgr24")
-        
-            # LANCER webrtc (sans RTCConfiguration pour éviter TypeError sur certaines versions)
-            ctx = webrtc_streamer(
-                key="detection-webcam",
-                video_transformer_factory=OpenCVTransformer,
-                media_stream_constraints={"video": True, "audio": False},
-                async_transform=True,
-                desired_playing=True
-            )
-        
-            webrtc_available = True
-        
-        except Exception as e:
-            webrtc_available = False
-            webrtc_error_msg = str(e)
-        
-        # Si webrtc a démarré correctement -> boucle non bloquante pour afficher stats
-        if webrtc_available and ctx is not None:
-            if ctx.state.playing:
-                status_placeholder.success("🔴 Flux WebRTC actif — autorise la webcam dans le navigateur.")
-            else:
-                status_placeholder.info("WebRTC prêt — clique sur Start si nécessaire.")
-        
-            def update_stats_loop():
-                while True:
-                    try:
-                        if ctx.video_transformer is None:
-                            metric_faces.metric("Visages", 0)
-                            metric_eyes.metric("Yeux", 0)
-                            metric_fps.metric("FPS", "0.0")
-                            status_placeholder.write("Initialisation du flux...")
-                        else:
-                            with ctx.video_transformer.lock:
-                                nf = ctx.video_transformer.last_faces
-                                ne = ctx.video_transformer.last_eyes
-                                pt = ctx.video_transformer.last_proc_time or 0.0
-                            fps = 1.0 / pt if pt > 0 else 0.0
-                            metric_faces.metric("Visages", nf)
-                            metric_eyes.metric("Yeux", ne)
-                            metric_fps.metric("FPS", f"{fps:.1f}")
-                            status_placeholder.write(f"Traitement: {pt:.3f}s")
-                        time.sleep(0.5)
-                    except Exception:
-                        time.sleep(0.5)
-        
-            if 'webrtc_stats_thread' not in st.session_state:
-                st.session_state.webrtc_stats_thread = threading.Thread(target=update_stats_loop, daemon=True)
-                st.session_state.webrtc_stats_thread.start()
-        
-        # Sinon fallback photo avec st.camera_input (compatible Streamlit Cloud et local)
+            # Si mode auto demandé -> effectuer plusieurs captures (note: utilisateur doit prendre plusieurs photos successives)
+            if auto_mode:
+                st.info("Mode auto activé: clique sur la caméra à plusieurs reprises pour prendre jusqu'à 5 images (streaming non supporté sur Cloud).")
+                # on propose un mini-slider / compteur pour limiter
+                n = st.slider("Nombre de captures à traiter", min_value=1, max_value=5, value=3, key="auto_count")
+                if st.button("Lancer les captures", key="start_auto"):
+                    for i in range(n):
+                        # on ré-ouvre le dernier cam_file (l'utilisateur devra faire plusieurs prises manuelles)
+                        # En pratique st.camera_input ne capture pas automatiquement plusieurs images; on rappelle l'utilisateur.
+                        st.warning("Prise photo n°{}: cliquez sur le composant caméra pour prendre une nouvelle photo, puis cliquez 'Traiter la photo maintenant'.".format(i+1))
+                        st.sleep(0.5)
         else:
-            if webrtc_error_msg:
-                st.warning("Le streaming WebRTC n'a pas pu démarrer. Fallback vers la capture photo (st.camera_input).")
-                st.text_area("Erreur webrtc (pour logs)", webrtc_error_msg, height=120)
+            # Aucune photo prise encore
+            st.info("Aucune photo prise. Utilise le bouton 'Prendre une photo' du navigateur puis appuie sur 'Traiter la photo maintenant'.")
         
-            # Utiliser st.camera_input qui ouvre la webcam dans le navigateur et renvoie une image
-            cam_file = st.camera_input("📷 Prendre une photo (webcam)", key="camera_input")
-            if cam_file is not None:
-                try:
-                    img = Image.open(cam_file).convert("RGB")
-                    img_array = np.array(img)
-                    processed, nf, ne, pt, quality = process_image(img_array)
-        
-                    # Mettre à jour métriques
-                    metric_faces.metric("Visages", nf)
-                    metric_eyes.metric("Yeux", ne)
-                    metric_fps.metric("FPS", f"{1.0/pt:.1f}" if pt>0 else "0.0")
-        
-                    # Afficher image et feedback
-                    image_placeholder.image(processed, use_column_width=True)
-                    status_placeholder.success(f"Détection: {nf} visage(s), {ne} oeil(s) — Temps: {pt:.3f}s")
-                    st.session_state.total_detections += nf
-        
-                except Exception as ex:
-                    st.error(f"Erreur de traitement de l'image : {ex}")
-        # ---------- FIN Remplacement Webcam ----------
+        # Un alternative directe : permettre d'uploader une image locale (déjà présent côté 'upload')
+        st.markdown("**Astuce** : pour tester rapidement, tu peux aussi déposer une image via la fonction 'Image' dans la barre latérale.")
+        # ---------- FIN Remplacement webcam ----------
+
 
             st.markdown("""
             <div class="feedback-box feedback-success">
@@ -962,6 +910,7 @@ st.markdown(f"""
 </div>
 
 """, unsafe_allow_html=True)
+
 
 
 

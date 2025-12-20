@@ -32,22 +32,22 @@ if 'total_detections' not in st.session_state:
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-    
+
     * {
         font-family: 'Poppins', sans-serif;
     }
-    
+
     .main {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 0;
     }
-    
+
     .block-container {
         padding-top: 1rem;
         padding-bottom: 2rem;
         max-width: 1400px;
     }
-    
+
     /* Hero Section - Page d'accueil */
     .hero-container {
         background: white;
@@ -60,7 +60,7 @@ st.markdown("""
         gap: 3rem;
         align-items: center;
     }
-    
+
     .hero-left h1 {
         font-size: 3.5rem;
         font-weight: 800;
@@ -68,40 +68,40 @@ st.markdown("""
         line-height: 1.2;
         margin: 0 0 1rem 0;
     }
-    
+
     .hero-left .highlight {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
     }
-    
+
     .hero-left p {
         font-size: 1.2rem;
         color: #64748b;
         margin: 1.5rem 0 2rem 0;
         line-height: 1.7;
     }
-    
+
     .hero-right {
         position: relative;
         display: flex;
         justify-content: center;
         align-items: center;
     }
-    
+
     .demo-image-container {
         position: relative;
         width: 100%;
         max-width: 500px;
     }
-    
+
     .demo-image-container img {
         width: 100%;
         border-radius: 20px;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
     }
-    
+
     /* Rectangles de détection animés sur l'image de démo */
     .detection-box {
         position: absolute;
@@ -109,17 +109,17 @@ st.markdown("""
         border-radius: 8px;
         animation: pulse-border 2s ease-in-out infinite;
     }
-    
+
     .face-box {
         border-color: #667eea;
         box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
     }
-    
+
     .eye-box {
         border-color: #10b981;
         box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
     }
-    
+
     @keyframes pulse-border {
         0%, 100% {
             opacity: 1;
@@ -130,7 +130,7 @@ st.markdown("""
             transform: scale(1.02);
         }
     }
-    
+
     /* Badges de fonctionnalités */
     .features-badges {
         display: flex;
@@ -138,7 +138,7 @@ st.markdown("""
         flex-wrap: wrap;
         margin: 2rem 0;
     }
-    
+
     .badge {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
@@ -151,7 +151,7 @@ st.markdown("""
         gap: 0.5rem;
         box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
     }
-    
+
     /* Bouton CTA principal */
     .main-cta {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -170,12 +170,12 @@ st.markdown("""
         text-transform: uppercase;
         letter-spacing: 1px;
     }
-    
+
     .main-cta:hover {
         transform: translateY(-3px);
         box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
     }
-    
+
     /* Section Comment ça marche */
     .how-it-works {
         background:rgba(0, 2, 2, 0.5) ;
@@ -184,7 +184,7 @@ st.markdown("""
         margin: 2rem 0;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
     }
-    
+
     .how-it-works h2 {
         text-align: center;
         font-size: 2.5rem;
@@ -192,13 +192,13 @@ st.markdown("""
         color: #fff;
         margin-bottom: 3rem;
     }
-    
+
     .steps-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 2rem;
     }
-    
+
     .step-card {
         text-align: center;
         padding: 2rem;
@@ -206,11 +206,11 @@ st.markdown("""
         border-radius: 20px;
         transition: transform 0.3s ease;
     }
-    
+
     .step-card:hover {
         transform: translateY(-5px);
     }
-    
+
     .step-number {
         width: 60px;
         height: 60px;
@@ -224,18 +224,18 @@ st.markdown("""
         font-weight: 700;
         margin: 0 auto 1.5rem auto;
     }
-    
+
     .step-card h3 {
         font-size: 1.3rem;
         color: #fff;
         margin-bottom: 0.8rem;
     }
-    
+
     .step-card p {
         color: #64748b;
         line-height: 1.6;
     }
-    
+
     /* Stats rapides */
     .quick-stats {
         display: grid;
@@ -243,7 +243,7 @@ st.markdown("""
         gap: 1.5rem;
         margin: 2rem 0;
     }
-    
+
     .stat-card {
         background: rgba(0, 2, 2, 0.5);
         padding: 2rem;
@@ -252,7 +252,7 @@ st.markdown("""
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         border-top: 4px solid #667eea;
     }
-    
+
     .stat-number {
         font-size: 2.8rem;
         font-weight: 700;
@@ -261,14 +261,14 @@ st.markdown("""
         -webkit-text-fill-color: transparent;
         background-clip: text;
     }
-    
+
     .stat-label {
         color: #64748b;
         font-size: 0.95rem;
         margin-top: 0.5rem;
         font-weight: 500;
     }
-    
+
     /* Page détection */
     .detection-header {
         background:linear-gradient(135deg, #667eea 0%, #764ba2 100%) ;
@@ -278,13 +278,13 @@ st.markdown("""
         text-align: center;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     }
-    
+
     .detection-header h1 {
         font-size: 2.5rem;
         color: #fff;
         margin: 0 0 0.5rem 0;
     }
-    
+
     /* Feedback intelligent */
     .feedback-box {
         background: white;
@@ -298,7 +298,7 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
         animation: slideIn 0.3s ease-out;
     }
-    
+
     @keyframes slideIn {
         from {
             opacity: 0;
@@ -309,18 +309,18 @@ st.markdown("""
             transform: translateX(0);
         }
     }
-    
+
     .feedback-icon {
         font-size: 1.8rem;
     }
-    
+
     .feedback-text {
         color: #fff;
         font-weight: 500;
         margin: 0;
         font-size: 1rem;
     }
-    
+
     .feedback-success {
     border-left-color: #10b981;
     background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(209, 250, 229, 0.3) 50%, rgba(243, 244, 246, 0.5) 100%);
@@ -344,7 +344,7 @@ st.markdown("""
         background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(254, 202, 202, 0.3) 50%, rgba(243, 244, 246, 0.5) 100%);
         box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15);
     }
-    
+
     /* Stats en temps réel */
     .realtime-stats {
         display: grid;
@@ -352,7 +352,7 @@ st.markdown("""
         gap: 1rem;
         margin: 1.5rem 0;
     }
-    
+
     .stat-box {
         background:rgba(0.2, 0.5, 12, 0.3) ;
         padding: 1.5rem;
@@ -362,11 +362,11 @@ st.markdown("""
         transition: transform 0.2s ease;
         border-top: 3px solid #667eea;
     }
-    
+
     .stat-box:hover {
         transform: translateY(-4px);
     }
-    
+
     .stat-box .number {
         font-size: 2.5rem;
         font-weight: 700;
@@ -377,14 +377,14 @@ st.markdown("""
         margin: 0;
         line-height: 1;
     }
-    
+
     .stat-box .label {
         color: #fff;
         font-size: 0.95rem;
         font-weight: 500;
         margin-top: 0.5rem;
     }
-    
+
     /* Boutons */
     .stButton>button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -398,25 +398,25 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         width: 100%;
     }
-    
+
     .stButton>button:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
     }
-    
+
     /* Images */
     .stImage {
         border-radius: 15px;
         overflow: hidden;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
     }
-    
+
     /* Sidebar */
     .css-1d391kg, [data-testid="stSidebar"] {
         background:rgba(5, 2, 2, 0.5) ;
         backdrop-filter: blur(10px);
     }
-    
+
     /* Info cards */
     .info-card {
         background: rgba(0, 2, 2, 0.5);
@@ -426,45 +426,45 @@ st.markdown("""
         margin-bottom: 1.5rem;
         border-left: 4px solid #667eea;
     }
-    
+
     .info-card h3 {
         color: #fff;
         font-size: 1.2rem;
         font-weight: 600;
         margin: 0 0 1rem 0;
     }
-    
+
     .info-card p {
         color: #64748b;
         line-height: 1.6;
         margin: 0.5rem 0;
     }
-    
+
     /* Responsive */
     @media (max-width: 968px) {
         .hero-container {
             grid-template-columns: 1fr;
             padding: 2rem;
         }
-        
+
         .hero-left h1 {
             font-size: 2.5rem;
         }
-        
+
         .steps-grid {
             grid-template-columns: 1fr;
         }
-        
+
         .quick-stats {
             grid-template-columns: repeat(2, 1fr);
         }
     }
-    
+
     @media (max-width: 640px) {
         .hero-left h1 {
             font-size: 2rem;
         }
-        
+
         .quick-stats {
             grid-template-columns: 1fr;
         }
@@ -472,16 +472,17 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
 # Fonction de traitement avec mesure du temps
 def process_image(img_array):
     start_time = time.time()
     picture = img_array.copy()
     gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
-    
+
     # Vérifier la qualité de l'image
     brightness = np.mean(gray)
     quality = "Bonne" if 50 < brightness < 200 else "Faible"
-    
+
     faces = face.detectMultiScale(gray, 1.1, 5)
     total_eyes = 0
     for (x, y, w, h) in faces:
@@ -492,9 +493,10 @@ def process_image(img_array):
         total_eyes += len(eyes)
         for (ex, ey, ew, eh) in eyes:
             cv2.rectangle(roi_color, (ex, ey), (ex + ew, ey + eh), (16, 185, 129), 2)
-    
+
     processing_time = time.time() - start_time
     return picture, len(faces), total_eyes, processing_time, quality
+
 
 st.markdown("<div style='height: 80px;'></div>", unsafe_allow_html=True)
 
@@ -511,10 +513,10 @@ with col_nav2:
 
 # PAGE ACCUEIL
 if st.session_state.current_page == 'home':
-    
+
     # Hero Section avec grille 2 colonnes
     col_hero1, col_hero2 = st.columns([1, 1])
-    
+
     with col_hero1:
         st.markdown("""
         <div style="padding: 2rem 0;">
@@ -525,33 +527,34 @@ if st.session_state.current_page == 'home':
             <p style="font-size: 1.2rem; color: #64748b; margin: 1.5rem 0 2rem 0; line-height: 1.7;">
                 Détectez et analysez automatiquement les visages et les yeux dans vos photos et vidéos en temps réel avec notre intelligence artificielle avancée.
             </p>
-            
-            
+
+
         </div>
         """, unsafe_allow_html=True)
-    
+
     with col_hero2:
         # Charger et traiter l'image de démonstration
         try:
             # Remplacez ce chemin par votre image
             demo_image_path = "./assets/img2.jpg"  # Vous pouvez aussi utiliser une URL
-            
+
             # Pour la démo, créons une image placeholder si le fichier n'existe pas
             import os
+
             if os.path.exists(demo_image_path):
                 demo_img = Image.open(demo_image_path)
                 demo_array = np.array(demo_img)
             else:
                 # Image de démonstration par défaut (placeholder coloré)
                 demo_array = np.ones((400, 500, 3), dtype=np.uint8) * 200
-                cv2.putText(demo_array, "Placez votre image ici:", (50, 180), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 1, (102, 126, 234), 2)
-                cv2.putText(demo_array, "./assets/demo-detection.jpg", (50, 220), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (102, 126, 234), 2)
-            
+                cv2.putText(demo_array, "Placez votre image ici:", (50, 180),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (102, 126, 234), 2)
+                cv2.putText(demo_array, "./assets/demo-detection.jpg", (50, 220),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (102, 126, 234), 2)
+
             # Appliquer la détection Haar Cascade sur l'image de démo
             demo_processed, demo_faces, demo_eyes, _, _ = process_image(demo_array)
-            
+
             st.markdown("""
             <div style="position: relative; animation: float 3s ease-in-out infinite;">
                 <style>
@@ -562,11 +565,11 @@ if st.session_state.current_page == 'home':
                 </style>
             </div>
             """, unsafe_allow_html=True)
-            
+
             # Afficher l'image avec détections
-            st.image(demo_processed, use_container_width=True, 
-                    caption=f"✨ Détection en action : {demo_faces} visage(s) et {demo_eyes} œil(s) détectés")
-            
+            st.image(demo_processed, use_container_width=True,
+                     caption=f"✨ Détection en action : {demo_faces} visage(s) et {demo_eyes} œil(s) détectés")
+
         except Exception as e:
             # Si erreur, afficher un placeholder
             st.markdown("""
@@ -580,12 +583,12 @@ if st.session_state.current_page == 'home':
                 </p>
             </div>
             """, unsafe_allow_html=True)
-    
+
     # Bouton CTA principal
     if st.button("🚀 COMMENCER LA DÉTECTION MAINTENANT", key="main_cta", use_container_width=True):
         st.session_state.current_page = 'detection'
         st.rerun()
-    
+
     # Stats rapides
     st.markdown(f"""
     <div class="quick-stats">
@@ -607,7 +610,7 @@ if st.session_state.current_page == 'home':
         </div>
     </div>
     """, unsafe_allow_html=True)
-    
+
     # Comment ça marche
     st.markdown("""
     <div class="how-it-works">
@@ -631,30 +634,30 @@ if st.session_state.current_page == 'home':
         </div>
     </div>
     """, unsafe_allow_html=True)
-    
+
     # Fonctionnalités principales
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.markdown("""
         <div class="info-card">
             <h3>🎯 Détection multi-visages</h3>
             <p>Détectez simultanément plusieurs visages dans une même image avec une précision remarquable.</p>
         </div>
-        
+
         <div class="info-card">
             <h3>👁️ Reconnaissance des yeux</h3>
             <p>Localisation précise des yeux pour chaque visage détecté avec marqueurs visuels distincts.</p>
         </div>
         """, unsafe_allow_html=True)
-    
+
     with col2:
         st.markdown("""
         <div class="info-card">
             <h3>📹 Analyse en temps réel</h3>
             <p>Détection instantanée via webcam avec traitement vidéo fluide à 30+ FPS.</p>
         </div>
-        
+
         <div class="info-card">
             <h3>💡 Feedback intelligent</h3>
             <p>Recommandations automatiques pour améliorer la qualité de vos détections.</p>
@@ -663,7 +666,7 @@ if st.session_state.current_page == 'home':
 
 # PAGE DÉTECTION
 elif st.session_state.current_page == 'detection':
-    
+
     # Header
     st.markdown("""
     <div class="detection-header">
@@ -671,34 +674,34 @@ elif st.session_state.current_page == 'detection':
         <p style="color: #fff; margin: 0;">Analysez vos images ou utilisez votre webcam pour une détection en temps réel</p>
     </div>
     """, unsafe_allow_html=True)
-    
+
     # Sidebar - Contrôles
     with st.sidebar:
         st.markdown("### 🎛️ Mode de détection")
-        
+
         # col1, col2 = st.columns(2)
         # with col1:
         if st.button("📁 Image", key="upload_btn", use_container_width=True):
-                st.session_state.mode = 'upload'
-                st.session_state.webcam_running = False
+            st.session_state.mode = 'upload'
+            st.session_state.webcam_running = False
         # with col2:
         button_label = "🛑 Stop" if st.session_state.webcam_running else "📹 Webcam"
         if st.button(button_label, key="webcam_btn", use_container_width=True):
-                if st.session_state.webcam_running:
-                    st.session_state.webcam_running = False
-                    st.session_state.mode = None
-                else:
-                    st.session_state.mode = 'webcam'
-                    st.session_state.webcam_running = True
-        
+            if st.session_state.webcam_running:
+                st.session_state.webcam_running = False
+                st.session_state.mode = None
+            else:
+                st.session_state.mode = 'webcam'
+                st.session_state.webcam_running = True
+
         st.markdown("---")
-        
+
         if st.session_state.mode == 'upload':
             st.markdown("### 📤 Importer une image")
             file = st.file_uploader("Choisissez une image", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
         else:
             file = None
-        
+
         st.markdown("---")
         st.markdown("""
         <div class="info-card">
@@ -709,7 +712,7 @@ elif st.session_state.current_page == 'detection':
             <p><strong>✓ Angle :</strong> Visages de face pour une meilleure détection</p>
         </div>
         """, unsafe_allow_html=True)
-    
+
     # Mode Upload
     if st.session_state.mode == 'upload' and file is not None:
         # Feedback : Analyse en cours
@@ -719,16 +722,16 @@ elif st.session_state.current_page == 'detection':
             <p class="feedback-text">Analyse en cours...</p>
         </div>
         """, unsafe_allow_html=True)
-        
+
         try:
             img = Image.open(file)
             img_array = np.array(img)
             picture, num_faces, num_eyes, proc_time, quality = process_image(img_array)
-            
+
             # Mise à jour du compteur total
             st.session_state.total_detections += num_faces
             st.session_state.processing_time = proc_time
-            
+
             # Feedback intelligent basé sur la qualité
             if quality == "Faible":
                 st.markdown("""
@@ -744,7 +747,7 @@ elif st.session_state.current_page == 'detection':
                     <p class="feedback-text">Qualité d'image optimale pour la détection</p>
                 </div>
                 """, unsafe_allow_html=True)
-            
+
             # Temps de traitement
             st.markdown(f"""
             <div class="feedback-box feedback-info">
@@ -752,7 +755,7 @@ elif st.session_state.current_page == 'detection':
                 <p class="feedback-text">Temps de traitement : {proc_time:.2f}s</p>
             </div>
             """, unsafe_allow_html=True)
-            
+
             # Statistiques de détection
             st.markdown(f"""
             <div class="realtime-stats">
@@ -774,11 +777,13 @@ elif st.session_state.current_page == 'detection':
                 </div>
             </div>
             """, unsafe_allow_html=True)
-            
-           # Image résultat centrée
+
+            # Image résultat centrée
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                st.image(picture, caption="✅ Résultat de la détection - Les rectangles bleus indiquent les visages, les verts indiquent les yeux", width=500)
+                st.image(picture,
+                         caption="✅ Résultat de la détection - Les rectangles bleus indiquent les visages, les verts indiquent les yeux",
+                         width=500)
             # Message de résultat
             if num_faces == 0:
                 st.markdown("""
@@ -794,7 +799,7 @@ elif st.session_state.current_page == 'detection':
                     <p class="feedback-text">Détection réussie ! {num_faces} visage(s) et {num_eyes} œil(s) identifiés avec succès.</p>
                 </div>
                 """, unsafe_allow_html=True)
-        
+
         except Exception as e:
             st.markdown(f"""
             <div class="feedback-box feedback-error">
@@ -802,92 +807,81 @@ elif st.session_state.current_page == 'detection':
                 <p class="feedback-text">Erreur lors du traitement : {str(e)}</p>
             </div>
             """, unsafe_allow_html=True)
-    
+
     # Mode Webcam
     elif st.session_state.mode == 'webcam' and st.session_state.webcam_running:
         st.info("🔴 Flux en direct activé")
-        
+
         # 1. ON PRÉPARE LA STRUCTURE AVANT LA BOUCLE (Une seule fois)
         col_m1, col_m2, col_m3 = st.columns(3)
         metric_faces = col_m1.empty()
         metric_eyes = col_m2.empty()
         metric_fps = col_m3.empty()
-        
+
         image_placeholder = st.empty()
         status_placeholder = st.empty()
 
         # ---------- Remplacement webcam : traitement automatique de st.camera_input ----------
-        # ---------- Simuler un flux avec st.camera_input + sauvegarde de captures ----------
-        from io import BytesIO
         import time
-        
-        # Initialiser la liste des captures si inexistante
-        if 'captures' not in st.session_state:
-            st.session_state.captures = []
-        
-        st.info("Mode session: prends plusieurs photos (clique sur la caméra), puis 'Sauvegarder la capture'. Quand tu as 5+ captures, clique 'Lire la séquence'.")
-        
-        # composant caméra (utilisateur clique pour prendre snapshot)
-        cam_file = st.camera_input("📷 Prendre une photo (webcam)", key="session_camera")
-        
-        # Afficher aperçu et proposer de sauvegarder la capture actuelle
+        from io import BytesIO
+
+        # placeholders metrics (déjà créés plus haut, mais redéclarés localement pour sûreté)
+        col_m1, col_m2, col_m3 = st.columns(3)
+        metric_faces = col_m1.empty()
+        metric_eyes = col_m2.empty()
+        metric_fps = col_m3.empty()
+        status_placeholder = st.empty()
+        image_placeholder = st.empty()
+
+        st.info(
+            "🔴 Mode Webcam (capture photo) — autorise la caméra dans le navigateur puis clique sur le bouton de la caméra pour prendre une photo. L'image sera traitée automatiquement.")
+
+        # Composant caméra (renvoie un fichier BytesIO quand l'utilisateur prend une photo)
+        cam_file = st.camera_input("📷 Prendre une photo (webcam)", key="camera_input")
+
+        # Si l'utilisateur capture une photo, on la traite immédiatement (pas besoin d'appuyer sur un bouton supplémentaire)
         if cam_file is not None:
             try:
-                preview = Image.open(cam_file).convert("RGB")
-                st.image(preview, caption="Aperçu de la dernière capture", width=320)
-                col_a, col_b, col_c = st.columns([1,1,1])
-                with col_a:
-                    if st.button("💾 Sauvegarder la capture", key=f"save_{len(st.session_state.captures)}"):
-                        # on stocke le bytes pour réutiliser plus tard
-                        buf = BytesIO()
-                        preview.save(buf, format="PNG")
-                        buf.seek(0)
-                        st.session_state.captures.append(buf.read())
-                        st.success(f"Capture sauvegardée ({len(st.session_state.captures)})")
-                with col_b:
-                    if st.button("🗑️ Vider captures", key="clear_caps"):
-                        st.session_state.captures = []
-                        st.warning("Liste de captures vidée.")
-                with col_c:
-                    st.markdown(f"**Captures sauvegardées :** {len(st.session_state.captures)}")
-            except Exception as e:
-                st.error(f"Erreur aperçu: {e}")
-        
-        # Bouton pour lire la séquence et afficher les images traitées (simulateur de flux)
-        st.markdown("---")
-        cols = st.columns([1,1,1,1])
-        with cols[0]:
-            n_to_play = st.number_input("Frames à jouer (max)", min_value=1, max_value=50, value=min(10, max(1, len(st.session_state.captures))), step=1)
-        
-        if st.button("▶️ Lire la séquence (simulateur)"):
-            if len(st.session_state.captures) == 0:
-                st.warning("Aucune capture sauvegardée — prends et sauvegarde des photos d'abord.")
-            else:
-                # On lit au plus n_to_play frames (ou toutes si moins)
-                count = min(n_to_play, len(st.session_state.captures))
-                placeholder = st.empty()
-                for i in range(count):
-                    try:
-                        # Reconstruire PIL depuis bytes, convertir en array RGB
-                        buf = BytesIO(st.session_state.captures[i])
-                        img = Image.open(buf).convert("RGB")
-                        arr = np.array(img)
-        
-                        # Traiter avec TA fonction (inchangée)
-                        processed, nf, ne, pt, quality = process_image(arr)
-        
-                        # Afficher (rapide) — ajuste sleep pour cadence (0.1-0.3s)
-                        placeholder.image(processed, caption=f"Frame {i+1}/{count} — Visages: {nf} Yeux: {ne} — {pt:.3f}s", width=640)
-                        time.sleep(0.18)   # cadence simulée (~5-6 FPS). Ajuste si tu veux plus lent/rapide.
-                    except Exception as ex:
-                        st.error(f"Erreur lecture frame {i}: {ex}")
-                st.success("Lecture terminée.")
-        # Optionnel: bouton pour télécharger toutes les captures en zip (si tu veux)
-        # ---------- FIN simulateur ----------
+                # Lecture de l'image depuis le BytesIO renvoyé par st.camera_input
+                img = Image.open(cam_file).convert("RGB")
+                img_array = np.array(img)
 
-        # ---------- FIN remplacement ----------
+                # Appel de TA fonction existante (process_image attend un array RGB)
+                processed, nf, ne, pt, quality = process_image(img_array)
 
+                # Mise à jour UI / métriques
+                metric_faces.metric("Visages", nf)
+                metric_eyes.metric("Yeux", ne)
+                metric_fps.metric("FPS", f"{(1.0 / pt):.1f}" if pt > 0 else "0.0")
+                status_placeholder.success(
+                    f"Détection : {nf} visage(s), {ne} œil(s) — Temps : {pt:.3f}s — Qualité : {quality}")
 
+                # Afficher l'image annotée (stretch pour occuper la colonne)
+                image_placeholder.image(processed, caption=f"Résultat — Visages: {nf} | Yeux: {ne}", width='stretch')
+
+                # Incrémenter compteur total
+                st.session_state.total_detections += nf
+
+                # Bouton optionnel pour sauvegarder la photo traitée localement (download)
+                buf = BytesIO()
+                # processed est un numpy array RGB ; convertir en PIL et sauvegarder
+                im_pil = Image.fromarray(processed)
+                im_pil.save(buf, format="PNG")
+                buf.seek(0)
+                st.download_button(
+                    label="💾 Télécharger l'image traitée",
+                    data=buf,
+                    file_name="detection_result.png",
+                    mime="image/png"
+                )
+
+            except Exception as ex:
+                st.error(f"Erreur lors du traitement de la photo : {ex}")
+
+        else:
+            st.info(
+                "Aucune photo prise. Clique sur le composant caméra pour capturer une image, elle sera traitée immédiatement.")
+            # ---------- FIN remplacement ----------
 
             st.markdown("""
             <div class="feedback-box feedback-success">
@@ -895,7 +889,7 @@ elif st.session_state.current_page == 'detection':
                 <p class="feedback-text">Webcam arrêtée avec succès</p>
             </div>
             """, unsafe_allow_html=True)
-    
+
     else:
         st.markdown("""
         <div class="info-card" style="text-align: center; padding: 3rem;">
@@ -916,9 +910,3 @@ st.markdown(f"""
 </div>
 
 """, unsafe_allow_html=True)
-
-
-
-
-
-

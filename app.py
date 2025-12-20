@@ -474,28 +474,83 @@ st.markdown("""
 
 
 # Fonction de traitement avec mesure du temps
-def process_image(img_array):
-    start_time = time.time()
-    picture = img_array.copy()
-    gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+def process_image(img_array, detect_width=320):
+    """
+    Robust, faster face+eye detection.
+    - img_array: RGB numpy array (H,W,3) uint8
+    - detect_width: width to which we downscale for detection (speed)
+    Returns: annotated_image_rgb, n_faces, n_eyes, proc_time, quality
+    """
+    t0 = time.perf_counter()
 
-    # Vérifier la qualité de l'image
-    brightness = np.mean(gray)
+    # sécuriser le type
+    img = img_array.astype('uint8').copy()
+    h, w = img.shape[:2]
+
+    # Step A : downscale for detection to speed up
+    if w > detect_width:
+        scale = detect_width / w
+        small = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+    else:
+        scale = 1.0
+        small = img
+
+    # Step B : grayscale + equalize for better contrast
+    gray_small = cv2.cvtColor(small, cv2.COLOR_RGB2GRAY)
+    gray_small = cv2.equalizeHist(gray_small)
+
+    # Safety check: ensure cascades loaded
+    if face.empty():
+        raise RuntimeError("Le cascadeur 'face' n'est pas chargé (cv2.data.haarcascades).")
+    if eye.empty():
+        raise RuntimeError("Le cascadeur 'eye' n'est pas chargé (cv2.data.haarcascades).")
+
+    # Step C : detect faces on the small image (faster)
+    # Ajuste scaleFactor/minNeighbors/minSize pour ta webcam
+    faces_small = face.detectMultiScale(
+        gray_small,
+        scaleFactor=1.08,   # plus fin que 1.1
+        minNeighbors=4,     # un peu moins strict
+        minSize=(24, 24)    # autorise petits visages
+    )
+
+    # Prepare drawing on full-sized RGB image (convert to BGR for cv2 drawing)
+    out_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    total_eyes = 0
+
+    # For each face found in the small image, scale coords to original size
+    for (x_s, y_s, w_s, h_s) in faces_small:
+        x = int(x_s / scale); y = int(y_s / scale)
+        ww = int(w_s / scale); hh = int(h_s / scale)
+
+        # rectangle for face (BGR color)
+        cv2.rectangle(out_bgr, (x, y), (x + ww, y + hh), (234, 126, 102), 3)
+
+        # detect eyes in small ROI to be faster
+        roi_gray_small = gray_small[y_s:y_s + h_s, x_s:x_s + w_s]
+        roi_color_small = small[y_s:y_s + h_s, x_s:x_s + w_s]
+
+        eyes_small = eye.detectMultiScale(roi_gray_small, scaleFactor=1.1, minNeighbors=3, minSize=(10, 10))
+        total_eyes += len(eyes_small)
+
+        # draw eyes (scale coordinates back to original image)
+        for (ex_s, ey_s, ew_s, eh_s) in eyes_small:
+            ex = int((x_s + ex_s) / scale); ey = int((y_s + ey_s) / scale)
+            ew = int(ew_s / scale); eh = int(eh_s / scale)
+            cv2.rectangle(out_bgr, (ex, ey), (ex + ew, ey + eh), (16, 185, 129), 2)
+
+    # Convert back to RGB for st.image
+    out_rgb = cv2.cvtColor(out_bgr, cv2.COLOR_BGR2RGB)
+
+    proc_time = time.perf_counter() - t0
+
+    # Quality estimate based on brightness
+    gray_full = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    brightness = float(np.mean(gray_full))
     quality = "Bonne" if 50 < brightness < 200 else "Faible"
 
-    faces = face.detectMultiScale(gray, 1.1, 5)
-    total_eyes = 0
-    for (x, y, w, h) in faces:
-        cv2.rectangle(picture, (x, y), (x + w, y + h), (102, 126, 234), 3)
-        roi_gray = gray[y:y + h, x:x + w]
-        roi_color = picture[y:y + h, x:x + w]
-        eyes = eye.detectMultiScale(roi_gray)
-        total_eyes += len(eyes)
-        for (ex, ey, ew, eh) in eyes:
-            cv2.rectangle(roi_color, (ex, ey), (ex + ew, ey + eh), (16, 185, 129), 2)
+    return out_rgb, len(faces_small), total_eyes, proc_time, quality
 
-    processing_time = time.time() - start_time
-    return picture, len(faces), total_eyes, processing_time, quality
 
 
 st.markdown("<div style='height: 80px;'></div>", unsafe_allow_html=True)
@@ -840,47 +895,44 @@ elif st.session_state.current_page == 'detection':
         cam_file = st.camera_input("📷 Prendre une photo (webcam)", key="camera_input")
 
         # Si l'utilisateur capture une photo, on la traite immédiatement (pas besoin d'appuyer sur un bouton supplémentaire)
+        # --- inside your webcam branch, when you get cam_file ---
         if cam_file is not None:
             try:
-                # Lecture de l'image depuis le BytesIO renvoyé par st.camera_input
-                img = Image.open(cam_file).convert("RGB")
-                img_array = np.array(img)
-
-                # Appel de TA fonction existante (process_image attend un array RGB)
-                processed, nf, ne, pt, quality = process_image(img_array)
-
-                # Mise à jour UI / métriques
+                # debug: inspect
+                raw_bytes = cam_file.getvalue() if hasattr(cam_file, "getvalue") else None
+                img_pil = Image.open(cam_file).convert("RGB")
+                img_arr = np.array(img_pil)
+        
+                # Debug info (afficher une seule fois ou quand change)
+                st.session_state._last_cam_shape = img_arr.shape
+                st.session_state._last_cam_dtype = img_arr.dtype
+        
+                # use improved process_image with downscale width for speed (e.g., 320)
+                processed, nf, ne, pt, quality = process_image(img_arr, detect_width=320)
+        
+                # Update metrics & FPS
+                # compute rolling FPS estimate
+                prev = st.session_state.get('_last_proc_time', None)
+                st.session_state['_last_proc_time'] = pt
+                fps = 1.0/pt if pt > 0 else 0.0
+        
                 metric_faces.metric("Visages", nf)
                 metric_eyes.metric("Yeux", ne)
-                metric_fps.metric("FPS", f"{(1.0 / pt):.1f}" if pt > 0 else "0.0")
-                status_placeholder.success(
-                    f"Détection : {nf} visage(s), {ne} œil(s) — Temps : {pt:.3f}s — Qualité : {quality}")
-
-                # Afficher l'image annotée (stretch pour occuper la colonne)
-                image_placeholder.image(processed, caption=f"Résultat — Visages: {nf} | Yeux: {ne}", width='stretch')
-
-                # Incrémenter compteur total
+                metric_fps.metric("FPS", f"{fps:.1f}")
+        
+                # show annotated image
+                image_placeholder.image(processed, caption=f"Visages: {nf} | Yeux: {ne} | Qualité: {quality}", use_column_width=True)
+        
+                # optional: show debug info
+                st.caption(f"Cam shape: {img_arr.shape} dtype: {img_arr.dtype} proc_time: {pt:.3f}s")
+        
                 st.session_state.total_detections += nf
-
-                # Bouton optionnel pour sauvegarder la photo traitée localement (download)
-                buf = BytesIO()
-                # processed est un numpy array RGB ; convertir en PIL et sauvegarder
-                im_pil = Image.fromarray(processed)
-                im_pil.save(buf, format="PNG")
-                buf.seek(0)
-                st.download_button(
-                    label="💾 Télécharger l'image traitée",
-                    data=buf,
-                    file_name="detection_result.png",
-                    mime="image/png"
-                )
-
+        
             except Exception as ex:
-                st.error(f"Erreur lors du traitement de la photo : {ex}")
-
+                st.error(f"Erreur traitement photo webcam: {ex}")
         else:
-            st.info(
-                "Aucune photo prise. Clique sur le composant caméra pour capturer une image, elle sera traitée immédiatement.")
+            st.info("Aucune photo prise. Clique sur le composant caméra pour capturer une image.")
+
             # ---------- FIN remplacement ----------
 
             st.markdown("""
@@ -910,3 +962,4 @@ st.markdown(f"""
 </div>
 
 """, unsafe_allow_html=True)
+

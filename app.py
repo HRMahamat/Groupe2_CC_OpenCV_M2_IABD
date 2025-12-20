@@ -817,62 +817,74 @@ elif st.session_state.current_page == 'detection':
         status_placeholder = st.empty()
 
         # ---------- Remplacement webcam : traitement automatique de st.camera_input ----------
-        import time
+        # ---------- Simuler un flux avec st.camera_input + sauvegarde de captures ----------
         from io import BytesIO
+        import time
         
-        # placeholders metrics (déjà créés plus haut, mais redéclarés localement pour sûreté)
-        col_m1, col_m2, col_m3 = st.columns(3)
-        metric_faces = col_m1.empty()
-        metric_eyes  = col_m2.empty()
-        metric_fps   = col_m3.empty()
-        status_placeholder = st.empty()
-        image_placeholder = st.empty()
+        # Initialiser la liste des captures si inexistante
+        if 'captures' not in st.session_state:
+            st.session_state.captures = []
         
-        st.info("🔴 Mode Webcam (capture photo) — autorise la caméra dans le navigateur puis clique sur le bouton de la caméra pour prendre une photo. L'image sera traitée automatiquement.")
+        st.info("Mode session: prends plusieurs photos (clique sur la caméra), puis 'Sauvegarder la capture'. Quand tu as 5+ captures, clique 'Lire la séquence'.")
         
-        # Composant caméra (renvoie un fichier BytesIO quand l'utilisateur prend une photo)
-        cam_file = st.camera_input("📷 Prendre une photo (webcam)", key="camera_input")
+        # composant caméra (utilisateur clique pour prendre snapshot)
+        cam_file = st.camera_input("📷 Prendre une photo (webcam)", key="session_camera")
         
-        # Si l'utilisateur capture une photo, on la traite immédiatement (pas besoin d'appuyer sur un bouton supplémentaire)
+        # Afficher aperçu et proposer de sauvegarder la capture actuelle
         if cam_file is not None:
             try:
-                # Lecture de l'image depuis le BytesIO renvoyé par st.camera_input
-                img = Image.open(cam_file).convert("RGB")
-                img_array = np.array(img)
+                preview = Image.open(cam_file).convert("RGB")
+                st.image(preview, caption="Aperçu de la dernière capture", width=320)
+                col_a, col_b, col_c = st.columns([1,1,1])
+                with col_a:
+                    if st.button("💾 Sauvegarder la capture", key=f"save_{len(st.session_state.captures)}"):
+                        # on stocke le bytes pour réutiliser plus tard
+                        buf = BytesIO()
+                        preview.save(buf, format="PNG")
+                        buf.seek(0)
+                        st.session_state.captures.append(buf.read())
+                        st.success(f"Capture sauvegardée ({len(st.session_state.captures)})")
+                with col_b:
+                    if st.button("🗑️ Vider captures", key="clear_caps"):
+                        st.session_state.captures = []
+                        st.warning("Liste de captures vidée.")
+                with col_c:
+                    st.markdown(f"**Captures sauvegardées :** {len(st.session_state.captures)}")
+            except Exception as e:
+                st.error(f"Erreur aperçu: {e}")
         
-                # Appel de TA fonction existante (process_image attend un array RGB)
-                processed, nf, ne, pt, quality = process_image(img_array)
+        # Bouton pour lire la séquence et afficher les images traitées (simulateur de flux)
+        st.markdown("---")
+        cols = st.columns([1,1,1,1])
+        with cols[0]:
+            n_to_play = st.number_input("Frames à jouer (max)", min_value=1, max_value=50, value=min(10, max(1, len(st.session_state.captures))), step=1)
         
-                # Mise à jour UI / métriques
-                metric_faces.metric("Visages", nf)
-                metric_eyes.metric("Yeux", ne)
-                metric_fps.metric("FPS", f"{(1.0/pt):.1f}" if pt>0 else "0.0")
-                status_placeholder.success(f"Détection : {nf} visage(s), {ne} œil(s) — Temps : {pt:.3f}s — Qualité : {quality}")
+        if st.button("▶️ Lire la séquence (simulateur)"):
+            if len(st.session_state.captures) == 0:
+                st.warning("Aucune capture sauvegardée — prends et sauvegarde des photos d'abord.")
+            else:
+                # On lit au plus n_to_play frames (ou toutes si moins)
+                count = min(n_to_play, len(st.session_state.captures))
+                placeholder = st.empty()
+                for i in range(count):
+                    try:
+                        # Reconstruire PIL depuis bytes, convertir en array RGB
+                        buf = BytesIO(st.session_state.captures[i])
+                        img = Image.open(buf).convert("RGB")
+                        arr = np.array(img)
         
-                # Afficher l'image annotée (stretch pour occuper la colonne)
-                image_placeholder.image(processed, caption=f"Résultat — Visages: {nf} | Yeux: {ne}", width='stretch')
+                        # Traiter avec TA fonction (inchangée)
+                        processed, nf, ne, pt, quality = process_image(arr)
         
-                # Incrémenter compteur total
-                st.session_state.total_detections += nf
-        
-                # Bouton optionnel pour sauvegarder la photo traitée localement (download)
-                buf = BytesIO()
-                # processed est un numpy array RGB ; convertir en PIL et sauvegarder
-                im_pil = Image.fromarray(processed)
-                im_pil.save(buf, format="PNG")
-                buf.seek(0)
-                st.download_button(
-                    label="💾 Télécharger l'image traitée",
-                    data=buf,
-                    file_name="detection_result.png",
-                    mime="image/png"
-                )
-        
-            except Exception as ex:
-                st.error(f"Erreur lors du traitement de la photo : {ex}")
-        
-        else:
-            st.info("Aucune photo prise. Clique sur le composant caméra pour capturer une image, elle sera traitée immédiatement.")
+                        # Afficher (rapide) — ajuste sleep pour cadence (0.1-0.3s)
+                        placeholder.image(processed, caption=f"Frame {i+1}/{count} — Visages: {nf} Yeux: {ne} — {pt:.3f}s", width=640)
+                        time.sleep(0.18)   # cadence simulée (~5-6 FPS). Ajuste si tu veux plus lent/rapide.
+                    except Exception as ex:
+                        st.error(f"Erreur lecture frame {i}: {ex}")
+                st.success("Lecture terminée.")
+        # Optionnel: bouton pour télécharger toutes les captures en zip (si tu veux)
+        # ---------- FIN simulateur ----------
+
         # ---------- FIN remplacement ----------
 
 
@@ -904,6 +916,7 @@ st.markdown(f"""
 </div>
 
 """, unsafe_allow_html=True)
+
 
 
 
